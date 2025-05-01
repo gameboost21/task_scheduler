@@ -2,6 +2,8 @@ from enum import Enum
 
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
+from sqlmodel import SQLModel
+
 
 class Run(Enum):
     LOCAL = "local"
