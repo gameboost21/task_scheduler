@@ -1,6 +1,7 @@
 services:
   db:
     image: postgres
+    container_name: postgres-db
     networks:
       - backend
     environment:
@@ -28,6 +29,7 @@ services:
       - db
   pgadmin:
     image: dpage/pgadmin4
+    container_name: pgadmin
     environment:
       PGADMIN_DEFAULT_EMAIL: ${PGADMIN_USERNAME}
       PGADMIN_DEFAULT_PASSWORD: ${PGADMIN_PASSWORD}
