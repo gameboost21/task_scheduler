@@ -1,44 +1,83 @@
 from enum import Enum
 
-from fastapi import FastAPI, HTTPException
-from pydantic import BaseModel
-from sqlmodel import SQLModel
+from fastapi import FastAPI, HTTPException, Depends
+from sqlmodel import SQLModel, create_engine, Session, Field, select
+from dotenv import load_dotenv
+import os
+
+load_dotenv()
+
+database_url = os.getenv('DATABASE_URL')
+
 
 
 class Run(Enum):
     LOCAL = "local"
     REMOTE = "remote"
-class Task(BaseModel):
-    type: str
+
+class Task(SQLModel, table=True):
+    id: Optional[int] = Field(primary_key=True, index=True)
+    taskname: str
     sheduled: bool
     runcount: int
     successful: bool
-    run: Run
 
 
 app = FastAPI()
 
-tasks = {
+engine = create_engine(database_url, connect_args={"check_same_thread": False})
+SQLModel.metadata.create_all(engine)
+
+
+def get_session():
+    with Session(engine) as session:
+        yield session
+
+#Creating a Task:
+@app.post("/tasks/", response_model=Task)
+def create_task(task:Task, session: Session = Depends(get_session)):
+    session.add(task)
+    session.commit
+    session.refresh(task)
+    return task
+
+#Get Tasks
+@app.get("/tasks/", response_model=list[Task])
+def get_tasks(skip: int = 0, limit: int = 10, session: Session = Depends(get_session)):
+    tasks = session.exec((Task).offset(skip).limit(limit)).all()
+    return tasks
+
+#Get Task by ID:
+@app.get("/tasks/{task_id}", response_model=Task)
+def get_task_by_id(task_id: int, session: Session = Depends(get_session)):
+    task = session.get(Task, task_id)
+    if not task:
+        raise HTTPException(status_code=404, detail="Task not f0und")
+    return task
+
+#Update Task:
+@app.put("/tasks/{task_id}", response_model=Task)
+def update_task(task_id: int, task_data: Task, session: Session = Depends(get_session)):
+    #Get the task
+    task = session.get(Task, task_id)
+    if not task:
+        raise HTTPException(status_code=404, detail="Task not f0und")
+    #Update task
+    for field, value in task_data.model_dump().items():
+        setattr(task, field, value)
+
+    session.commit()
+    session.refresh()
+    return task
+
+#Delete Task
+@app.delete("/tasks/{task_id}")
+def delete_task(task_id: int, session: Session = Depends(get_session)):
+    task = session.get(Task, task_id)
+    if not task:
+        raise HTTPException(status_code=404, detail="Task not f0und")
     
-    0: Task(type="OS", sheduled="True", runcount="4", successful="True", run=Run.LOCAL),
-    1: Task(type="OS", sheduled="False", runcount="3", successful="False", run=Run.REMOTE),
-    2: Task(type="Bash", sheduled="True", runcount="1", successful="False", run=Run.LOCAL)
-
-}
-
-@app.get("/")
-def index() -> dict[str, dict[int, Task]]:
-    return {"tasks" : tasks}
-
-@app.get("/tasks/{task_id}")
-def query_task_by_id(task_id: int) -> Task:
-    if task_id not in tasks:
-        raise HTTPException(status_code=404, detail=f"Task with ID {task_id} not found."
-        )
-    return tasks[task_id]
-
-#@app.post()
-#def creat_task():
-
-#@app.delete()
-#def remove_task():
+    session.delete(task)
+    session.commit()
+    return task
+       

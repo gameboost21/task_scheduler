@@ -1,10 +1,21 @@
 services:
+  db:
+    image: postgres
+    networks:
+      - backend
+    environment:
+      POSTGRES_USER: ${PG_USERNAME}
+      POSTGRES_PASSWORD: ${PG_PASSWORD}
+      POSTGRES_DB: ${PG_DATABASE}
+    volumes:
+      - ./app/db/data:/var/lib/postgresql/data
   backend_api:
     image: py-automation-backend
     pull_policy: if_not_present
     container_name: backend
     networks:
     - frontend
+    - backend 
     labels:
       - traefik.enable=true
       - traefik.http.routers.api-1-https.rule=Host(`dashboard.tuschkoreit.de`)
@@ -13,7 +24,30 @@ services:
       - traefik.http.routers.api-1-https.tls.certresolver=cloudflare
       - traefik.http.services.api-1-https-service.loadbalancer.server.port=5000
     restart: unless-stopped
+    depends_on:
+      - db
+  pgadmin:
+    image: dpage/pgadmin4
+    environment:
+      PGADMIN_DEFAULT_EMAIL: ${PGADMIN_USERNAME}
+      PGADMIN_DEFAULT_PASSWORD: ${PGADMIN_PASSWORD}
+    depends_on:
+      - db
+    labels:
+      - traefik.enable=true
+      - traefik.http.routers.pgadmin-1-https.rule=Host(`pgadmin.tuschkoreit.de`)
+      - traefik.http.routers.pgadmin-1-https.entrypoints=websecure
+      - traefik.http.routers.pgadmin-1-https.tls=true
+      - traefik.http.routers.pgadmin-1-https.tls.certresolver=cloudflare
+      - traefik.http.services.pgadmin-1-https-service.loadbalancer.server.port=80
+    networks:
+      - backend
+      - frontend
+
+
+
 networks:
   frontend:
     external: true
-
+  backend:
+    external: false
