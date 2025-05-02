@@ -1,7 +1,7 @@
 services:
   db:
     image: postgres
-    container_name: postgres-db
+    #container_name: postgres-db
     networks:
       - backend
     environment:
@@ -9,11 +9,11 @@ services:
       POSTGRES_PASSWORD: ${PG_PASSWORD}
       POSTGRES_DB: ${PG_DATABASE}
     volumes:
-      - ./app/db/data:/var/lib/postgresql/data
+      - /home/da3m0n/py-automation/app/db/data:/var/lib/postgresql/data
   backend_api:
     image: py-automation-backend
     pull_policy: if_not_present
-    container_name: backend
+    container_name: python_api
     networks:
     - frontend
     - backend 
@@ -29,19 +29,21 @@ services:
       - db
   pgadmin:
     image: dpage/pgadmin4
-    container_name: pgadmin
+    #container_name: pgadmin
     environment:
       PGADMIN_DEFAULT_EMAIL: ${PGADMIN_USERNAME}
       PGADMIN_DEFAULT_PASSWORD: ${PGADMIN_PASSWORD}
+      PGADMIN_CONFIG_SERVER_MODE: 'True'
+      PGADMIN_CONFIG_ALLOWED_HOSTS: '["pgadmin.tuschkoreit.de"]'
     depends_on:
       - db
     labels:
       - traefik.enable=true
-      - traefik.http.routers.pgadmin-1-https.rule=Host(`pgadmin.tuschkoreit.de`)
-      - traefik.http.routers.pgadmin-1-https.entrypoints=websecure
-      - traefik.http.routers.pgadmin-1-https.tls=true
-      - traefik.http.routers.pgadmin-1-https.tls.certresolver=cloudflare
-      - traefik.http.services.pgadmin-1-https-service.loadbalancer.server.port=80
+      - traefik.http.routers.pgadmin-https.rule=Host(`pgadmin.tuschkoreit.de`)
+      - traefik.http.routers.pgadmin-https.entrypoints=websecure
+      - traefik.http.routers.pgadmin-https.tls=true
+      - traefik.http.routers.pgadmin-https.tls.certresolver=cloudflare
+      - traefik.http.services.pgadmin-https-service.loadbalancer.server.port=80
     networks:
       - backend
       - frontend

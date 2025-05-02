@@ -16,7 +16,7 @@ class Run(Enum):
     REMOTE = "remote"
 
 class Task(SQLModel, table=True):
-    id: Optional[int] = Field(primary_key=True, index=True)
+    id: int | None = Field(primary_key=True, index=True)
     taskname: str
     sheduled: bool
     runcount: int
@@ -25,7 +25,9 @@ class Task(SQLModel, table=True):
 
 app = FastAPI()
 
-engine = create_engine(database_url, connect_args={"check_same_thread": False})
+DATABASE_URL = os.getenv("DATABASE_URL")
+
+engine = create_engine(DATABASE_URL)
 SQLModel.metadata.create_all(engine)
 
 
@@ -37,14 +39,15 @@ def get_session():
 @app.post("/tasks/", response_model=Task)
 def create_task(task:Task, session: Session = Depends(get_session)):
     session.add(task)
-    session.commit
+    session.commit()
     session.refresh(task)
     return task
 
 #Get Tasks
 @app.get("/tasks/", response_model=list[Task])
 def get_tasks(skip: int = 0, limit: int = 10, session: Session = Depends(get_session)):
-    tasks = session.exec((Task).offset(skip).limit(limit)).all()
+    query = select(Task).offset(skip).limit(limit)
+    tasks = session.exec(query).all()
     return tasks
 
 #Get Task by ID:
@@ -67,7 +70,7 @@ def update_task(task_id: int, task_data: Task, session: Session = Depends(get_se
         setattr(task, field, value)
 
     session.commit()
-    session.refresh()
+    session.refresh(task)
     return task
 
 #Delete Task
