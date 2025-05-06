@@ -1,0 +1,19 @@
+stages:
+  - build
+  - deploy
+
+build-image:
+  stage: build
+  image: docker:20.10.16
+  services:
+    - docker:dind
+  script:
+    - docker build -t py-automation-backend .
+    - docker save py-automation-backend > app.tar  # optional for later use
+
+deploy:
+  stage: deploy
+  script:
+    - ssh da3m0n@y213.239.221.99 'docker load < app.tar && docker-compose up -d'
+  only:
+    - main
