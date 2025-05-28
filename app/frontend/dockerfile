@@ -1,0 +1,32 @@
+# Base image
+FROM node:23-alpine AS build
+
+# Set working directory
+WORKDIR /app
+
+# Install deps
+COPY package*.json ./
+RUN npm install
+
+# Copy app files
+COPY . .
+
+# Build the app
+RUN npm run build
+
+# ---- Serve the build with a lightweight server ----
+FROM node:23-alpine AS production
+
+WORKDIR /app
+
+# Install just the serve package
+RUN npm install -g serve
+
+# Copy built files from previous stage
+COPY --from=build /app/dist ./dist
+
+# Expose the port serve will listen on
+EXPOSE 5173
+
+# Start the server (bind to 0.0.0.0)
+CMD ["serve", "-s", "dist", "-l", "tcp://0.0.0.0:5173"]
