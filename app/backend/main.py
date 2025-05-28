@@ -1,6 +1,7 @@
 from enum import Enum
-
+from typing import Optional
 from fastapi import FastAPI, HTTPException, Depends
+from fastapi.middleware.cors import CORSMiddleware
 from sqlmodel import SQLModel, create_engine, Session, Field, select
 from dotenv import load_dotenv
 import os
@@ -16,7 +17,7 @@ class Run(Enum):
     REMOTE = "remote"
 
 class Task(SQLModel, table=True):
-    id: int | None = Field(primary_key=True, index=True)
+    id: Optional[int] = Field(default=None, primary_key=True)
     taskname: str
     sheduled: bool
     runcount: int
@@ -24,6 +25,20 @@ class Task(SQLModel, table=True):
 
 
 app = FastAPI()
+
+origins = [
+    "http://0.0.0.0:5173",
+    "https://frontend.tuschkoreit.de",
+    "http://127.24.0.7"
+]
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=origins,
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"]
+)
 
 DATABASE_URL = os.getenv("DATABASE_URL")
 
@@ -36,7 +51,7 @@ def get_session():
         yield session
 
 #Creating a Task:
-@app.post("/tasks/", response_model=Task)
+@app.post("/tasks", response_model=Task)
 def create_task(task:Task, session: Session = Depends(get_session)):
     session.add(task)
     session.commit()
@@ -44,7 +59,7 @@ def create_task(task:Task, session: Session = Depends(get_session)):
     return task
 
 #Get Tasks
-@app.get("/tasks/", response_model=list[Task])
+@app.get("/tasks", response_model=list[Task])
 def get_tasks(skip: int = 0, limit: int = 10, session: Session = Depends(get_session)):
     query = select(Task).offset(skip).limit(limit)
     tasks = session.exec(query).all()
