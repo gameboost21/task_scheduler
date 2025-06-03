@@ -4,6 +4,7 @@ from fastapi import FastAPI, HTTPException, Depends, APIRouter, Security, status
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.security import OAuth2PasswordRequestForm, OAuth2PasswordBearer
 from sqlmodel import SQLModel, create_engine, Session, Field, select, JSON
+from pydantic import BaseModel, EmailStr
 from dotenv import load_dotenv
 import os, subprocess, logging
 from apscheduler.schedulers.background import BackgroundScheduler
@@ -48,7 +49,15 @@ class Task(SQLModel, table=True):
 class Users(SQLModel, table=True):
     id: Optional[int] = Field(default=None, primary_key=True)
     username: str = Field(index=True, unique=True)
+    email: str
     hashed_password: str
+    is_active: bool = False
+    is_admin: bool = False
+
+class UserCreate(BaseModel):
+    username: str
+    email: EmailStr
+    password: str
 
 app = FastAPI()
 
@@ -143,17 +152,60 @@ def get_current_user(token: str = Depends(oauth2_scheme), session: Session = Dep
     return user
 
 with Session(engine) as session:
-    user = Users(username="testuser", hashed_password=pwd_context.hash("testpass"))
-    session.add(user)
+    admin = Users(username="admin", email="admin@example.com", hashed_password=pwd_context.hash("adminpass"), is_admin=True, is_active=True)
+    session.add(admin)
     session.commit()
 
+#Login endpoint
 @app.post("/login")
 def login(form_data: OAuth2PasswordRequestForm = Depends(), session: Session = Depends(get_session)):
     user = session.exec(select(Users).where(Users.username == form_data.username)).first()
     if not user or not verify_password(form_data.password, user.hashed_password):
         raise HTTPException(status_code=400, detail="Incorrect Username or Password")
+    
+    if not user.is_active:
+        raise HTTPException(status_code=403, detail="Account not approved by admin")
+
     access_token = create_access_token(data={"sub": user.username})
     return {"access_token":access_token, "token_type":"bearer"}
+
+#Registration endpoint
+@app.post("/register")
+def register(user: UserCreate, session: Session = Depends(get_session)):
+    existing = session.exec(select(Users).where(Users.username == user.username)).first()
+    if existing:
+        raise HTTPException(status_code=400, detail="Username already exists")
+    
+    hashed_pw = hash_password(user.password)
+
+    new_user = Users(
+        username = user.username,
+        email = user.email,
+        hashed_password=hashed_pw,
+        is_active=False,
+        is_admin=False
+    )
+    session.add(new_user)
+    session.commit()
+    session.refresh(new_user)
+
+    return {"message": "Registration request submitted. Awaiting Admin approval"}
+
+@app.post("/admin/approve/{user_id}")
+def approve_user(user_id: int, session: Session = Depends(get_session), current_user: Users = Depends(get_current_user)):
+    if not current_user.is_admin:
+        raise HTTPException(status_code=403, detail="Not authorized")
+    
+    user = session.get(Users, user_id)
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+    
+    user.is_active = True
+    session.add(user)
+    session.commit()
+    session.refresh(user)
+
+    return {"message" : f"User {user.username} has been approved and activated."}
 
 #Creating a Task:
 @app.post("/tasks", response_model=Task)
