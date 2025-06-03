@@ -1,40 +1,25 @@
 import React, { useState, useEffect } from 'react'
 import TaskForm from "./TaskForm";
+import { fetchWithAuth } from '../utils/fetchWithAuth';
 
-function TaskList() {
-    const [tasks, setTasks] = useState([]);
-
-    const fetchTasks = async () => {
-        const response = await fetch("https://dashboard.tuschkoreit.de/tasks")
-        const data = await response.json();
-        setTasks(data)
-    };
-
-    useEffect(() => {
-        fetchTasks();
-    }, []);
-
-    const handleTaskCreated = (newTask) => {
-        setTasks((p) => [...p, newTask]);
-    };
+function TaskList({ tasks, onDelete }) {
 
     const handleDelete = async (id) => {
         try {
-            const response = await fetch(`https://dashboard.tuschkoreit.de/tasks/${id}`, {
+            const response = await fetchWithAuth(`https://dashboard.tuschkoreit.de/tasks/${id}`, {
                 method: "DELETE",
             });
-            if (!response.ok) throw new Error("Task could not be deleted")
+            if (!response.ok) throw new Error("Task could not be deleted");
 
-            setTasks((prevTasks) => prevTasks.filter((task) => task.id !== id));
+            // Let the parent re-fetch tasks instead of updating local state
+            onDelete();
         } catch (error) {
-            console.error("Error deleting task. Error: ", error)
+            console.error("Error deleting task. Error: ", error);
         }
-
-    }
+    };
 
     return (
         <div className="max-w-2xl mx-auto mt-10 space-y-6">
-            <TaskForm onTaskCreated={handleTaskCreated} />
             <ul className="space-y-2">
                 {tasks.map((task) => (
                     <li
