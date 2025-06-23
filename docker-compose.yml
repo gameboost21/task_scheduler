@@ -1,6 +1,8 @@
 services:
   db:
     image: postgres
+    ports:
+      - 5432:5432
     #container_name: postgres-db
     networks:
       - backend
@@ -49,6 +51,34 @@ services:
     networks:
       - backend
       - frontend
+  uptime-kuma:
+    image: louislam/uptime-kuma
+    container_name: uptime-kuma
+    volumes: 
+      - /home/da3m0n/uptime-kuma:/app/data
+      - /var/run/docker.sock:/var/run/docker.sock
+    networks:
+      - frontend
+    labels:
+      - traefik.enable=true
+      - traefik.http.routers.kuma.rule=Host(`status.tuschkoreit.de`)
+      - traefik.http.routers.kuma.entrypoints=websecure
+      - traefik.http.routers.kuma.tls=true
+      - traefik.http.routers.kuma.tls.certresolver=cloudflare
+      - traefik.http.services.kuma.loadbalancer.server.port=3001
+    ports:
+      - 3001:3001
+    restart: unless-stopped
+  
+  watchtower:
+    image: containrrr/watchtower
+    container_name: watchtower
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+    environment:
+      - WATCHTOWER_CLEANUP=true
+      - WATCHTOWER_POLL_INTERVAL=3600
+    restart: unless-stopped
 
 networks:
   frontend:

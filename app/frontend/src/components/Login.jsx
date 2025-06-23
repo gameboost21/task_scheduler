@@ -1,7 +1,9 @@
 import React, { useState } from 'react'
+import { Link, useNavigate } from 'react-router-dom';
 
 
 function Login({ onLogin }) {
+    const navigate = useNavigate()
     const [username, setUsername] = useState("")
     const [password, setPassword] = useState("")
     const [error, setError] = useState(null)
@@ -32,47 +34,53 @@ function Login({ onLogin }) {
             const token = data.access_token;
             // console.log("Token: ", token)
 
-            if(!token) {
+            if (!token) {
                 throw new Error("No token in response")
             }
 
             localStorage.setItem("token", token)
             onLogin()
+            navigate('/dashboard')
         } catch (err) {
             setError("Invalid username or password")
         }
     }
 
     return (
-        <form onSubmit={handleLogin} className="space-y-4 max-w-sm mx-auto bg-white p-6 rounded shadow">
-            <h2 className="text-xl font-bold text-center">Login</h2>
-            {error && <p className="text-red-500">{error}</p>}
-            <div>
-                <label className="block mb-1 font-medium">Username:</label>
-                <input
-                    type="text"
-                    value={username}
-                    onChange={(e) => setUsername(e.target.value)}
-                    required
-                    className="w-full border p-2 rounded"
-                />
-            </div>
-            <div>
-                <label className="block mb-1 font-medium">Password:</label>
-                <input type="password"
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    required
-                    className="w-full border p-2 rounded"
-                />
-            </div>
-            <button
-                type='submit'
-                className="w-full bg-blue-600 text-white p-2 rounded hover:bg-blue-700"
-            >
-                Login
-            </button>
-        </form>
+        <>
+            <form onSubmit={handleLogin} className="space-y-4 max-w-sm mx-auto bg-white p-6 rounded shadow">
+                <h2 className="text-xl font-bold text-center">Login</h2>
+                {error && <p className="text-red-500">{error}</p>}
+                <div>
+                    <label className="block mb-1 font-medium">Username:</label>
+                    <input
+                        type="text"
+                        value={username}
+                        onChange={(e) => setUsername(e.target.value)}
+                        required
+                        className="w-full border p-2 rounded"
+                    />
+                </div>
+                <div>
+                    <label className="block mb-1 font-medium">Password:</label>
+                    <input type="password"
+                        value={password}
+                        onChange={(e) => setPassword(e.target.value)}
+                        required
+                        className="w-full border p-2 rounded"
+                    />
+                </div>
+                <button
+                    type='submit'
+                    className="w-full bg-blue-600 text-white p-2 rounded hover:bg-blue-700"
+                >
+                    Login
+                </button>
+            </form>
+            <p>
+                No account yet? <Link to="/register">Register here</Link>
+            </p>
+        </>
     );
 }
 
