@@ -1,0 +1,7 @@
+{
+  "componentDefaults": {
+    "style": "default"
+  },
+  "components": [],
+  "importAlias": "@/components"
+}
