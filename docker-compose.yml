@@ -79,6 +79,31 @@ services:
       - WATCHTOWER_CLEANUP=true
       - WATCHTOWER_POLL_INTERVAL=3600
     restart: unless-stopped
+  planka:
+    image: ghcr.io/plankanban/planka:2.0.0-rc.3
+    restart: unless-stopped
+    networks:
+      - frontend
+      - backend
+    environment:
+      - DATABASE_URL=postgresql://planka:pg4dm1npl4nk4!@db:5432/planka
+      - BASE_URL=https://planka.tuschkoreit.de
+      - SECRET_KEY=4b53baa517c8cb7ee9afacbce839e9fc17d6a54c63d53ccf62e6f2e788880a90ff25c989d9a56f5cd350baea549016e159276e1846f3cf991d31b1d32cdad00a
+      - DEFAULT_ADMIN_EMAIL=tom@tuschkoreit.de
+      - DEFAULT_ADMIN_PASSWORD=g$69&esRm0os#f2$5^O6E%LO
+      - DEFAULT_ADMIN_NAME=da3m0n
+      - DEFAULT_ADMIN_USERNAME=da3m0n
+    depends_on:
+      - db
+    labels:
+      - traefik.enable=true
+      - traefik.http.routers.planka.rule=Host(`planka.tuschkoreit.de`)
+      - traefik.http.routers.planka.entrypoints=websecure
+      - traefik.http.routers.planka.tls=true
+      - traefik.http.routers.planka.tls.certresolver=cloudflare
+      - traefik.http.services.planka.loadbalancer.server.port=1337
+    ports:
+      - "3000:1337"
 
 networks:
   frontend:
